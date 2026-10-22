@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的 GitHub 图床</title>
+    <style>
+        :root {
+            --primary: #6a11cb;
+            --primary-light: #2575fc;
+            --bg: #f4f5f7;
+            --card-bg: #ffffff;
+            --text: #333333;
+            --text-light: #666666;
+            --border: #e0e0e0;
+            --danger: #ff4757;
+            --success: #2ed573;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 顶部导航栏 */
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        header h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .token-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-grow: 1;
+            max-width: 500px;
+        }
+
+        .token-section input {
+            flex-grow: 1;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: none;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-white {
+            background-color: white;
+            color: var(--primary);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid white;
+            color: white;
+        }
+
+        /* 主体内容 */
+        main {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            flex-grow: 1;
+        }
+
+        /* 上传区域 */
+        .upload-area {
+            background-color: var(--card-bg);
+            border: 2px dashed #b0b0b0;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 30px;
+        }
+
+        .upload-area:hover, .upload-area.dragover {
+            border-color: var(--primary);
+            background-color: #f8f0ff;
+        }
+
+        .upload-area p {
+            color: var(--text-light);
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .upload-icon {
+            font-size: 40px;
+            color: var(--primary);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        /* 进度提示 */
+        #statusArea {
+            margin-bottom: 20px;
+            display: none;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .progress-bar {
+            height: 6px;
+            background-color: #eee;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-bar-inner {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--primary-light));
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        /* 图库区域 */
+        .gallery-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .gallery-header h2 {
+            font-size: 18px;
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        /* 卡片样式 */
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+        }
+
+        .card-media {
+            height: 180px;
+            background-color: #f9f9f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            border-bottom: 1px solid var(--border);
+            position: relative;
+        }
+
+        .card-media img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #2b2b2b;
+        }
+
+        .card-media audio {
+            width: 90%;
+        }
+
+        .card-info {
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .filename {
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--text);
+        }
+
+        .url-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--text-light);
+            background-color: #f9f9f9;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .card-actions button {
+            flex: 1;
+            padding: 6px 0;
+            font-size: 12px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            background: white;
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .card-actions button:hover {
+            background: #f0f0f0;
+        }
+
+        .card-actions button.btn-delete {
+            color: var(--danger);
+            border-color: #ffcccc;
+        }
+
+        .card-actions button.btn-delete:hover {
+            background: #fff0f0;
+        }
+
+        /* Toast 提示 */
+        #toastContainer {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .toast {
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .toast.success { background-color: var(--success); }
+        .toast.error { background-color: var(--danger); }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            color: var(--text-light);
+            padding: 40px;
+            grid-column: 1 / -1;
+        }
+
+        @media (max-width: 600px) {
+            .token-section {
+                max-width: 100%;
+                width: 100%;
+            }
+            header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>📦 自用图床</h1>
+        <div class="token-section">
+            <input type="password" id="tokenInput" placeholder="输入 GitHub Personal Access Token">
+            <button class="btn btn-white" onclick="saveToken()">保存 Token</button>
+        </div>
+        <button class="btn btn-outline" onclick="loadGallery()">🔄 刷新图库</button>
+    </header>
+
+    <main>
+        <!-- 上传区域 -->
+        <div class="upload-area" id="dropZone">
+            <div class="upload-icon">☁️</div>
+            <h3>点击或拖拽文件到此区域上传</h3>
+            <p>支持图片 (jpg, png, gif, webp, svg, bmp, ico) 和音频 (mp3, wav, m4a, ogg, flac, aac)</p>
+            <input type="file" id="fileInput" multiple accept="image/*,audio/*">
+        </div>
+
+        <!-- 状态提示 -->
+        <div id="statusArea">
+            <div style="display: flex; justify-content: space-between; font-size: 14px;">
+                <span id="statusText">正在上传...</span>
+                <span id="statusPercent">0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-bar-inner" id="progressBar"></div>
+            </div>
+        </div>
+
+        <!-- 图库区域 -->
+        <div class="gallery-header">
+            <h2>我的文件</h2>
+        </div>
+        <div class="gallery-grid" id="galleryGrid">
+            <!-- 卡片动态生成 -->
+        </div>
+    </main>
+
+    <!-- Toast 容器 -->
+    <div id="toastContainer"></div>
+
+    <script>
+        // --- 基本信息配置 (在此修改你的信息) ---
+        const GITHUB_USERNAME = 'H-mio';
+        const REPO_NAME = 'Q';
+        const BRANCH = 'main';
+        // -------------------------------------
+
+        const API_BASE = `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/contents`;
+        const PAGES_BASE = `https://${GITHUB_USERNAME.toLowerCase()}.github.io/${REPO_NAME}`;
+        
+        let token = localStorage.getItem('github_token') || '';
+        const tokenInput = document.getElementById('tokenInput');
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const galleryGrid = document.getElementById('galleryGrid');
+        const statusArea = document.getElementById('statusArea');
+        const statusText = document.getElementById('statusText');
+        const statusPercent = document.getElementById('statusPercent');
+        const progressBar = document.getElementById('progressBar');
+
+        // 初始化
+        if (token) {
+            tokenInput.value = token;
+            loadGallery();
+        } else {
+            showToast('请先配置 Token', 'error');
+            galleryGrid.innerHTML = '<div class="empty-state">请先在顶部输入并保存 Token 后刷新图库</div>';
+        }
+
+        // Token 保存
+        function saveToken() {
+            const val = tokenInput.value.trim();
+            if (!val) {
+                showToast('Token 不能为空', 'error');
+                return;
+            }
+            token = val;
+            localStorage.setItem('github_token', token);
+            showToast('Token 保存成功', 'success');
+            loadGallery();
+        }
+
+        // Toast 提示系统
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // 拖拽上传事件
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) handleFiles(files);
+        });
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) handleFiles(e.target.files);
+            fileInput.value = ''; // 重置，允许重复上传同一个文件
+        });
+
+        // 处理文件上传
+        async function handleFiles(files) {
+            if (!token) {
+                showToast('请先配置 Token', 'error');
+                return;
+            }
+
+            const fileList = Array.from(files).filter(file => {
+                const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/bmp', 'image/x-icon', 'audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/ogg', 'audio/flac', 'audio/aac'];
+                if (!validTypes.includes(file.type) && !file.name.match(/\.(ico|flac|aac|m4a)$/i)) {
+                    showToast(`不支持的文件类型: ${file.name}`, 'error');
+                    return false;
+                }
+                return true;
+            });
+
+            if (fileList.length === 0) return;
+
+            statusArea.style.display = 'block';
+            let completed = 0;
+
+            for (const file of fileList) {
+                statusText.textContent = `正在上传: ${file.name}`;
+                const percent = Math.round((completed / fileList.length) * 100);
+                updateProgress(percent, `上传中 (${completed}/${fileList.length})`);
+
+                try {
+                    await uploadFile(file);
+                    completed++;
+                    updateProgress(Math.round((completed / fileList.length) * 100), `已完成 (${completed}/${fileList.length})`);
+                } catch (error) {
+                    console.error(error);
+                    showToast(`上传 ${file.name} 失败: ${error.message}`, 'error');
+                }
+            }
+
+            showToast('全部上传任务结束', 'success');
+            statusText.textContent = '上传完成';
+            
+            setTimeout(() => {
+                statusArea.style.display = 'none';
+                updateProgress(0, '');
+            }, 2000);
+
+            loadGallery(); // 刷新图库
+        }
+
+        function updateProgress(percent, text) {
+            progressBar.style.width = `${percent}%`;
+            statusPercent.textContent = `${percent}%`;
+            if (text) statusText.textContent = text;
+        }
+
+        // 上传单个文件到 GitHub
+        async function uploadFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    // 提取 base64 编码
+                    const base64Content = e.target.result.split(',')[1];
+                    const filePath = encodeURIComponent(file.name); // 处理文件名中的特殊字符
+                    
+                    // 检查文件是否已存在，如果存在需要先获取 sha
+                    let sha = null;
+                    try {
+                        const checkRes = await fetch(`${API_BASE}/${filePath}`, {
+                            headers: { 'Authorization': `token ${token}` }
+                        });
+                        if (checkRes.ok) {
+                            const data = await checkRes.json();
+                            sha = data.sha;
+                        }
+                    } catch (err) {
+                        console.log('检查文件是否存在失败，可能是新文件', err);
+                    }
+
+                    const body = {
+                        message: `Upload ${file.name} via Web UI`,
+                        content: base64Content,
+                        branch: BRANCH
+                    };
+                    
+                    if (sha) {
+                        body.sha = sha; // 如果存在，必须带上 sha 才能覆盖
+                    }
+
+                    try {
+                        const response = await fetch(`${API_BASE}/${filePath}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Authorization': `token ${token}`,
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(body)
+                        });
+
+                        if (response.ok) {
+                            resolve();
+                        } else {
+                            const errorData = await response.json();
+                            reject(new Error(errorData.message || 'API 请求失败'));
+                        }
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                reader.onerror = () => reject(new Error('读取文件失败'));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // 加载图库
+        async function loadGallery() {
+            if (!token) return;
+            
+            galleryGrid.innerHTML = '<div class="empty-state">加载中...</div>';
+            
+            try {
+                const response = await fetch(API_BASE, {
+                    headers: { 'Authorization': `token ${token}` }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error('Token 无效或已过期，请重新填写');
+                    }
+                    throw new Error('获取文件列表失败');
+                }
+
+                const files = await response.json();
+                
+                if (!Array.isArray(files)) {
+                    throw new Error('仓库返回数据异常');
+                }
+
+                // 过滤掉非文件（如果有文件夹的话）以及隐藏文件（可选）
+                const validFiles = files.filter(file => file.type === 'file' && !file.name.startsWith('.'));
+
+                if (validFiles.length === 0) {
+                    galleryGrid.innerHTML = '<div class="empty-state">图库空空如也，快去上传吧！</div>';
+                    return;
+                }
+
+                galleryGrid.innerHTML = '';
+                
+                // 倒序排列，最新上传的在前面
+                validFiles.reverse().forEach(file => {
+                    const card = createCard(file);
+                    galleryGrid.appendChild(card);
+                });
+
+            } catch (error) {
+                showToast(error.message, 'error');
+                galleryGrid.innerHTML = `<div class="empty-state" style="color:var(--danger)">${error.message}</div>`;
+            }
+        }
+
+        // 创建卡片
+        function createCard(file) {
+            const ext = file.name.split('.').pop().toLowerCase();
+            const isAudio = ['mp3', 'wav', 'm4a', 'ogg', 'flac', 'aac'].includes(ext);
+            
+            // 使用 raw.githubusercontent.com 作为预览源，避免 Pages 缓存导致预览不更新
+            const previewUrl = file.download_url; 
+            const publicUrl = `${PAGES_BASE}/${encodeURIComponent(file.name)}`;
+
+            const card = document.createElement('div');
+            card.className = 'card';
+
+            // 媒体部分
+            const mediaDiv = document.createElement('div');
+            mediaDiv.className = 'card-media';
+
+            if (isAudio) {
+                const audio = document.createElement('audio');
+                audio.controls = true;
+                audio.src = previewUrl;
+                mediaDiv.appendChild(audio);
+            } else {
+                const img = document.createElement('img');
+                img.src = previewUrl;
+                img.alt = file.name;
+                img.loading = 'lazy'; // 懒加载
+                mediaDiv.appendChild(img);
+            }
+
+            // 信息部分
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'card-info';
+
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'filename';
+            nameDiv.title = file.name;
+            nameDiv.textContent = file.name;
+
+            const urlInput = document.createElement('input');
+            urlInput.className = 'url-input';
+            urlInput.value = publicUrl;
+            urlInput.readOnly = true;
+
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'card-actions';
+
+            // 复制按钮
+            const copyBtn = document.createElement('button');
+            copyBtn.textContent = '📋 复制';
+            copyBtn.onclick = () => {
+                navigator.clipboard.writeText(publicUrl).then(() => {
+                    showToast('链接已复制', 'success');
+                }).catch(() => {
+                    // 兼容旧版浏览器
+                    urlInput.select();
+                    document.execCommand('copy');
+                    showToast('链接已复制', 'success');
+                });
+            };
+
+            // 打开按钮
+            const openBtn = document.createElement('button');
+            openBtn.textContent = '🔗 打开';
+            openBtn.onclick = () => window.open(publicUrl, '_blank');
+
+            // 删除按钮
+            const delBtn = document.createElement('button');
+            delBtn.textContent = '🗑️ 删除';
+            delBtn.className = 'btn-delete';
+            delBtn.onclick = () => deleteFile(file.name, file.sha);
+
+            actionsDiv.appendChild(copyBtn);
+            actionsDiv.appendChild(openBtn);
+            actionsDiv.appendChild(delBtn);
+
+            infoDiv.appendChild(nameDiv);
+            infoDiv.appendChild(urlInput);
+            infoDiv.appendChild(actionsDiv);
+
+            card.appendChild(mediaDiv);
+            card.appendChild(infoDiv);
+
+            return card;
+        }
+
+        // 删除文件
+        async function deleteFile(filename, sha) {
+            if (!confirm(`确定要删除 ${filename} 吗？此操作不可逆。`)) {
+                return;
+            }
+
+            try {
+                const filePath = encodeURIComponent(filename);
+                const response = await fetch(`${API_BASE}/${filePath}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: `Delete ${filename} via Web UI`,
+                        sha: sha,
+                        branch: BRANCH
+                    })
+                });
+
+                if (response.ok) {
+                    showToast('删除成功', 'success');
+                    loadGallery(); // 刷新列表
+                } else {
+                    const errorData = await response.json();
+                    showToast(`删除失败: ${errorData.message}`, 'error');
+                }
+            } catch (error) {
+                showToast('网络或请求错误', 'error');
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>
